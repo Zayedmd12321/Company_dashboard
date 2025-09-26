@@ -1,11 +1,33 @@
 import express from "express";
 import cors from "cors";
 import * as XLSX from "xlsx";
+import { Server } from "socket.io";
+import http from "http"
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({origin: process.env.FRONTEND_URL}));
+const allowedOrigin = process.env.FRONTEND_URL;
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigin,
+    methods: ["GET", "POST"]
+  }
+});
+
+let activeSocket = null;
+io.on('connection', (socket) => {
+  console.log('✅ A user connected');
+  activeSocket = socket;
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected');
+    activeSocket = null;
+  });
+});
+
+app.use(cors({ origin: allowedOrigin }));
+
 
 // --- Load Excel file once at startup ---
 const workbook = XLSX.readFile("data.xls");
@@ -66,6 +88,6 @@ app.get("/api/data", (req, res) => {
 });
 
 // --- Start server ---
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
